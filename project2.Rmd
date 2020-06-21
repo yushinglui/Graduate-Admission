@@ -1,0 +1,234 @@
+---
+title: "Capstone Project - Graduate Admission"
+author: "Yu Shing Lui"
+date: "22 June 2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1.Introduction
+
+The project performs data analysis and develops a machine learning algorithm to helping students in shortlisting universities with their profiles. The predicted output let them have an idea about their opportunity to enter for a particular university. 
+
+The dataset contains several parameters which are considered important during the application for Masters Programs. The parameters are including: 1. GRE Scores ( out of 340 ), 2. TOEFL Scores ( out of 120 ), 3. University Rating ( out of 5 ), 4. Statement of Purpose and Letter of Recommendation Strength ( out of 5 ), 5. Undergraduate GPA ( out of 10 ), 6. Research Experience ( either 0 or 1 ), 7. Chance of Admit ( ranging from 0 to 1 ).
+
+This dataset is inspired by the UCLA Graduate Dataset, which are the test scores and GPA are in the older format. Also, it is owned by Mohan S Acharya.
+
+## 1.Dataset and Package
+
+1.1 Load packages
+
+```{r warning=FALSE, message=FALSE}
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(corrplot)) install.packages("corrplot", repos = "http://cran.us.r-project.org")
+if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
+if(!require(rpart)) install.packages("rpart", repos = "http://cran.us.r-project.org")
+```
+
+1.2 Load dataset
+
+```{r}
+library(tidyverse)
+library(dplyr)
+url <- "https://github.com/yushinglui/graduate_admission/blob/master/datasets_admission.csv?raw=true"
+admission <- read.csv(url)
+```
+
+\pagebreak
+
+## 2.Data exploration
+
+2.1 General properties of the dataset.
+
+```{r}
+head(admission)
+summary(admission)
+```
+
+2.2 In the dataset, there are 500 rows and 9 columns.
+
+```{r}
+dim(admission)
+```
+
+\pagebreak
+
+2.3 There are no NA in the dataset.
+```{r}
+str(admission)
+sum(is.na(admission))
+```
+
+2.4 The diagram shows the relation between GRE score and chance of admit.
+```{r warning=FALSE, message=FALSE}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit))+geom_point()+geom_smooth()+ggtitle(
+  "The correlation between GRE score and chances of admit")
+```
+
+The diagram let us know about the GRE score will affect the chance of admission. However, the diagram is not strong enough to show the relationship between them. Now we have to plot some diagrams with the predictors, which is like TOFEL score, University rating, SOP, LOR, and CGPA.
+
+\pagebreak
+
+2.5 The correlation between GRE score and chances of admit with TOEFL Score column.
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=TOEFL.Score))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with TOEFL Score column")
+```
+
+\pagebreak
+
+2.6 The correlation between GRE score and chances of admit with University rating column
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=University.Rating))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with University rating column")
+```
+
+\pagebreak
+
+2.7 The correlation between GRE score and chances of admit with SOP column
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=SOP))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with SOP column")
+```
+
+\pagebreak
+
+2.8 The correlation between GRE score and chances of admit with LOR column
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=LOR))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with LOR column")
+```
+
+\pagebreak
+
+2.9 The correlation between GRE score and chances of admit with CGPA column
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=CGPA))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with CGPA column")
+```
+
+\pagebreak
+
+2.10 The correlation between GRE score and chances of admit with research column
+
+```{r}
+ggplot(admission,aes(x=GRE.Score,y=Chance.of.Admit,col=Research))+geom_point()+ggtitle(
+  "The correlation between GRE score and chances of admit with research column")
+```
+
+\pagebreak
+
+2.11 Summarize for the correlation with all different conditions.
+
+```{r}
+library(corrplot)
+admission <- admission %>% select(
+  GRE.Score,TOEFL.Score,University.Rating,SOP,LOR,CGPA,Research,Chance.of.Admit)
+M <- cor(admission)
+corrplot(M, method = "circle")
+```
+
+\pagebreak
+
+## 3. Machine learning algorithm
+
+Now we are focusing on three different methods, which is k-nearest neighbor, decision tree, randomforest, and linear regression models.
+
+3.1 Data Partitioning
+
+Generating the train and test sets are randomly splitting the data. The caret package includes the function createDataPartition that generates indexes for randomly splitting the data into training and test sets.
+
+```{r}
+library(caret)
+set.seed(1)
+test_index <- createDataPartition(y = admission$Chance.of.Admit, times = 1, p = 0.5, list = FALSE)
+train_set <- admission[-test_index,]
+test_set <- admission[test_index,]
+```
+
+3.2 K-Nearest Neighbor
+
+```{r}
+m_knn <- knn3(Chance.of.Admit~., data =train_set)
+summary(m_knn)
+```
+
+```{r warning=FALSE, message=FALSE}
+pred <- predict(m_knn, newdata=test_set)
+knn_rmse <- sqrt(mean((pred-train_set$Chance.of.Admit)^2))
+rmse_results <- data_frame(method = "knn", RMSE = knn_rmse)
+rmse_results
+```
+
+The result is 0.722 and we can do it better.
+
+\pagebreak
+
+3.3 Decision Tree
+
+```{r}
+library(rpart)
+m_dt <- rpart(Chance.of.Admit~., data = train_set)
+summary(m_dt)
+```
+
+```{r warning=FALSE, message=FALSE}
+pred<-predict(m_dt, newdata = test_set)
+dt_rmse <- sqrt(mean((pred-test_set$Chance.of.Admit)^2))
+rmse_results <- bind_rows(
+  rmse_results, data_frame(method="Decision Tree", RMSE = dt_rmse))
+rmse_results
+```
+
+The result is 0.0727 and it is better than before. Then, we will use other algorithm for prediction.
+
+3.4 Randomforest
+
+```{r}
+library(randomForest)
+m_rf <- randomForest(Chance.of.Admit~., data = train_set)
+```
+
+```{r warning=FALSE, message=FALSE}
+pred<-predict(m_rf,newdata = test_set)
+rf_rmse <- sqrt(mean((pred-test_set$Chance.of.Admit)^2))
+rmse_results <- bind_rows(
+  rmse_results, data_frame(method="RandomForest", RMSE = rf_rmse))
+rmse_results
+```
+
+The RMSE value is smaller than the last one.
+
+\pagebreak
+
+3.5 Linear regression
+
+```{r}
+m_lr <- lm(Chance.of.Admit~., data=train_set)
+summary(m_lr)
+```
+
+```{r warning=FALSE, message=FALSE}
+pred <- predict(m_lr, newdata=test_set)
+lr_RMSE <- sqrt(mean((pred-test_set$Chance.of.Admit)^2))
+rmse_results <- bind_rows(
+  rmse_results, data_frame(method = "Linear regression", RMSE = lr_RMSE))
+rmse_results
+```
+
+The RMSE result is 0.0631 and we believe that it is the best result compare with the others.
+
+## 4. Conclusion
+
+Using data from Mohan S Acharya data-set sourced from Kaggle several predictors or covariates were utilized to predict students in shortlisting universities with their profiles. After the use of several models the highest accuracy of 0.0631 was established by a Linear regression model with predictors TOFEL score, University rating, SOP, LOR, and CGPA.
+
